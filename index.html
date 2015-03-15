@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+
+<!--
+    David Couto PS2 6.813 Spring 2015
+    COLLABORATORS: No Collaborators
+
+    For the purposes of simplicity and ease of grading, helper functions for this assignment are included
+    in this .html file
+
+    Code used as reference or template:
+        Arrow on Canvas:
+        http://stackoverflow.com/questions/808826/draw-arrow-on-canvas-tag
+        Dynamic Table Creation:
+        https://developer.mozilla.org/en-US/docs/Traversing_an_HTML_table_with_JavaScript_and_DOM_Interfaces
+-->
+<html>
+
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<title>Checkerboard</title>
+
+<!-- Load style sheets -->
+<link rel="stylesheet" type="text/css" href="mainLayout.css" />
+
+<!-- Load any supplemental Javascript libraries here -->
+<script type="text/javascript" src="external_js/jquery-1.9.0.min.js"></script>
+<script type="text/javascript" src="checker.js"></script>
+<script type="text/javascript" src="boardEvent.js"></script>
+<script type="text/javascript" src="board.js"></script>
+<script type="text/javascript" src="rules.js"></script>
+
+<script type="text/javascript">
+
+//This script extracts parameters from the URL
+//from jquery-howto.blogspot.com
+
+    $.extend({
+        getUrlVars : function() {
+            var vars = [], hash;
+            var hashes = window.location.href.slice(
+                    window.location.href.indexOf('?') + 1).split('&');
+            for ( var i = 0; i < hashes.length; i++) {
+                hash = hashes[i].split('=');
+                vars.push(hash[0]);
+                vars[hash[0]] = hash[1];
+            }
+            return vars;
+        },
+        getUrlVar : function(name) {
+            return $.getUrlVars()[name];
+        }
+    });
+
+    var DEFAULT_BOARD_SIZE = 8;
+
+    //data model
+    var board;
+    var rules;
+    var whoseTurn = "black";
+
+    var directionOf = function(color) {
+      if (color == "black") {
+        return -1;
+      }
+      return 1;
+    }
+
+    /////////////////////////////////////////////
+    //     Inserted Helper Functions (Begin)
+    /////////////////////////////////////////////
+
+    //Function adapted for personal use from general function taken from https://developer.mozilla.org/en-US/docs/Traversing_an_HTML_table_with_JavaScript_and_DOM_Interfaces
+    //Code is used to dynamically create a table by disclosing the size of each cell and the number of rows and columns desired
+    var generate_table = function(numRows,numCols,cellPixelWidth) {
+        //get the reference for the body
+        var overlay = document.getElementById("checker_overlay");
+
+        // creates a <table> element and a <tbody> element
+        // table has name "checker_table"
+        var tbl     = document.createElement("table");
+        tbl.setAttribute('id',"checker_table");
+        var tblBody = document.createElement("tbody");
+
+        // creating all cells
+        for (var i = 0; i < numRows; i++) {
+            // creates a table row
+            var row = document.createElement("tr");
+
+            for (var j = 0; j < numCols; j++) {
+                // Create a <td> element and a text node, make the text
+                // node the contents of the <td>, and put the <td> at
+                // the end of the table row
+                var cell = document.createElement("td");
+                cell.setAttribute("width",cellPixelWidth);
+                cell.setAttribute("height",cellPixelWidth);
+                cell.setAttribute("align", "center");
+                row.appendChild(cell);
+            }
+
+        // add the row to the end of the table body
+        tblBody.appendChild(row);
+        }
+
+        // put the <tbody> in the <table>
+        tbl.appendChild(tblBody);
+        // appends <table> into <body>
+        overlay.appendChild(tbl);
+        tbl.setAttribute("cellpadding", "0");
+        tbl.setAttribute("cellspacing","0");
+
+    }
+
+    // Toggles the display for whose turn
+    // The color parameter should be either "black" or "red"
+    var toggleTurn = function(color,element) {
+        if(color=="black"){
+            whoseTurn="red";
+            element.setAttribute('style','background-color:red;color:white;');
+            element.innerHTML="Red Turn";
+        } else {
+            whoseTurn="black";
+            element.setAttribute('style','background-color:black;color:white;');
+            element.innerHTML="Black Turn";
+        }
+    }
+
+    //Helper used erase arrow afer each new move
+    var clearCanvas = function(context,canvas_size){
+        context.clearRect(0, 0, canvas_size, canvas_size);
+    }
+
+    //Used to draw checkerboard
+    var redrawCheckerboard = function(context,squareSizeInPixels,canvas_size,boardSize) {
+        clearCanvas(context,canvas_size);
+        for (var i = 0; i < boardSize; i++) {
+            for (var j = 0; j < boardSize; j++) { //mod 2 to place grey every other square
+                if(j%2){context.fillRect(2*i*squareSizeInPixels, j*squareSizeInPixels, squareSizeInPixels, squareSizeInPixels);
+                } else {context.fillRect(2*i*squareSizeInPixels+squareSizeInPixels, j*squareSizeInPixels, squareSizeInPixels, squareSizeInPixels);
+                }
+            }
+        }
+    }
+
+    //Helper to drawArrow()
+    //Code adapted from StackOverflow post http://stackoverflow.com/questions/808826/draw-arrow-on-canvas-tag
+    var canvas_arrow = function(context, squareSizeInPixels, fromx, fromy, tox, toy){
+        var headlen = squareSizeInPixels/1.6;   // length of head in squareSizeInPixels [var for checker square width, 1.6 scaling constant for dynamic resizing
+        var angle = Math.atan2(toy-fromy,tox-fromx);
+        context.beginPath();
+
+        context.lineWidth = squareSizeInPixels/6; //scaling constant of 6
+        context.moveTo(fromx, fromy);
+        context.lineTo(tox-context.lineWidth*Math.sqrt(3)*Math.cos(angle), toy-context.lineWidth*Math.sqrt(3)*Math.sin(angle)); //dynamic length to prevent arrow's line from going through arrowhead
+        context.strokeStyle = '#ffc000'; //dark yellow
+        context.stroke();
+
+        context.beginPath();
+        context.moveTo(tox, toy);
+        context.lineTo(tox-headlen*Math.cos(angle-Math.PI/6),toy-headlen*Math.sin(angle-Math.PI/6));
+        context.lineTo(tox-headlen*Math.cos(angle+Math.PI/6),toy-headlen*Math.sin(angle+Math.PI/6));
+        //arrowhead with PI/6 for angles from endpoint (equilateral triangle)
+        context.fillStyle = '#ffc000';
+        context.fill();
+    }
+
+    //Converts row/col coordinates into squareSizeInPixels and passes to canvas_arrow
+    var drawArrow = function(context,squareSizeInPixels,boardsize,arrowToRow,arrowToCol,arrowFromRow,arrowFromCol){
+        var fromy = arrowFromRow*squareSizeInPixels+squareSizeInPixels/2;
+        var toy = arrowToRow*squareSizeInPixels+squareSizeInPixels/2;
+        var fromx = arrowFromCol*squareSizeInPixels+squareSizeInPixels/2;
+        var tox = arrowToCol*squareSizeInPixels+squareSizeInPixels/2;
+        canvas_arrow(context, squareSizeInPixels, fromx, fromy, tox, toy);
+    }
+
+    /////////////////////////////////////////////
+    //     Inserted Helper Functions (End)
+    /////////////////////////////////////////////
+
+
+    // This allows the Javascript code inside this block to only run when the page
+    // has finished loading in the browser.
+    $(document).ready(function() {
+
+        if ($.getUrlVar('size') && $.getUrlVar('size') >= 6) {
+            board = new Board($.getUrlVar('size'));
+        } else {
+            board = new Board(DEFAULT_BOARD_SIZE);
+        }
+
+
+        /////////////////////////////////////////////
+        //     Graphics Variables Declaration
+        /////////////////////////////////////////////
+
+        //create checkerboard canvas
+        var canvas = document.getElementById('checker_board');
+        var context2D = canvas.getContext("2d");
+        context2D.fillStyle = "rgba(170,170,170,1)";
+
+        //create arrow canvas with transparent background
+        var arrowCanvas = document.getElementById('arrow');
+        var contextArrow2D = arrowCanvas.getContext("2d");
+        contextArrow2D.fillStyle = "rgba(0,0,0,0)";
+
+        var canvas_size = 400; //in px
+        var number_across = board.boardSize;
+        var squareSizeInPixels = (canvas_size/number_across); //defines pixel size of each square height and width
+
+	    rules = new Rules(board);
+
+
+        /////////////////////////////////////////////
+        //     Initial Graphics Setup
+        /////////////////////////////////////////////
+
+        //draw checkerboard
+        redrawCheckerboard(context2D,squareSizeInPixels,canvas_size,number_across);
+        //create overlay for checkers to be placed on
+        generate_table(board.boardSize,board.boardSize,squareSizeInPixels);
+
+
+        /////////////////////////////////////////////
+        //     Event Listeners
+        /////////////////////////////////////////////
+
+        // event listener for adding new piece to board
+        board.addEventListener('add',function (e) {
+
+            var checkerTable = document.getElementById("checker_table").rows[e.details.row].cells[e.details.col];
+
+            //create checker image to insert on checkerboard
+            var checkerImg = document.createElement("img");
+            checkerImg.setAttribute('class', 'autoResizeImage'); //scales down size of picture when needed
+            checkerImg.setAttribute("display", "block"); //prevents image from causing in-line displacement in table cells
+            if(e.details.checker.color=="red"){
+                checkerImg.setAttribute('src', 'graphics/red-piece.png');
+            } else {
+                checkerImg.setAttribute('src', 'graphics/black-piece.png');
+            }
+            checkerTable.appendChild(checkerImg);
+
+        },true);
+
+        // event listener for moving piece and managing picture replacement when becoming king
+    	board.addEventListener('move',function (e) {
+
+            clearCanvas(contextArrow2D,canvas_size); //saftey measure in case error in display when canvas is created
+
+            var checkerTable = document.getElementById("checker_table");
+            var checkerTableFrom = checkerTable.rows[e.details.fromRow].cells[e.details.fromCol];
+            var checkerTableTo = checkerTable.rows[e.details.toRow].cells[e.details.toCol];
+            var elementToRemove = checkerTableFrom.children[0];
+
+            var checkerImg = document.createElement("img");
+            checkerImg.setAttribute('class', 'autoResizeImage');
+            checkerImg.setAttribute("display", "block");
+            if(e.details.checker.color=="red"){
+                if(e.details.checker.isKing){
+                    checkerImg.setAttribute('src', 'graphics/red-king.png');
+                } else {
+                    checkerImg.setAttribute('src', 'graphics/red-piece.png');
+                }
+            } else {
+                if(e.details.checker.isKing){
+                    checkerImg.setAttribute('src', 'graphics/black-king.png');
+                } else {
+                    checkerImg.setAttribute('src', 'graphics/black-piece.png');
+                }
+            }
+
+
+            checkerTableFrom.removeChild(elementToRemove); //remove old picture at old location
+            checkerTableTo.appendChild(checkerImg); //insert new picutre at new location
+
+            //draw arrow along checker path of movement
+        drawArrow(contextArrow2D,squareSizeInPixels,board.boardSize,e.details.toRow,e.details.toCol,e.details.fromRow,e.details.fromCol);
+    	},true);
+
+        // event listener for removing piece
+        board.addEventListener('remove', function(e) {
+            var checkerTable = document.getElementById("checker_table").rows[e.details.row].cells[e.details.col];
+        	var checkerToRemove = checkerTable.children[0];
+            checkerTable.removeChild(checkerToRemove);
+        }, true);
+
+        // event listener for promoting to king
+        // left for sake of assignment, but not used
+        // look to "move" event listener for promotion image replacement
+        board.addEventListener('promote',function (e) {
+    		//Done in "move" event handler
+    	},true);
+
+
+        /////////////////////////////////////////////
+        //     Button Push Events
+        /////////////////////////////////////////////
+
+        $("#btnNewGame").click(function(evt) {
+            board.prepareNewGame();
+            clearCanvas(contextArrow2D,canvas_size); //clear canvas after new game button pushed
+        });
+
+        $("#btnAutoMove").click(function(evt) {
+          var playerColor = whoseTurn;
+          var playerDirection = directionOf(playerColor);
+          var result = rules.makeRandomMove(playerColor, playerDirection);
+          if (result != null) {
+            toggleTurn(whoseTurn,document.getElementById("whoseTurnDisplay")); //switches whose turn it is
+          }
+        });
+
+        board.prepareNewGame(); //prepare new game when page is "ready"
+
+    });
+</script>
+
+
+</head>
+
+<body>
+
+<table id="mainTable">
+    <tr>
+        <td id="navigation">
+          <table>
+			  <tr><td id="whoseTurnDisplay" align="center">Black Turn</td></tr>
+              <tr><td><input id="btnNewGame" type="button" name="new" value="New Game"/></td></tr>
+              <tr><td><input id="btnAutoMove" type="button"  name="new" value="Auto Move"/></td></tr>
+
+            </table>
+        </td>
+
+        <td id="content">
+            <div id="canvas-wrap"> <!-- div wrapper to layer board, checkers, and arrow -->
+                <canvas id="checker_board" width="400" height="400">Please Update Web Browser!</canvas>
+                <div id="checker_overlay"></div>
+                <canvas id="arrow" width="400" height="400">Please Update Web Browser!</canvas>
+            </div>
+        </td>
+    </tr>
+
+   </table>
+
+
+</body>
+
+</html>

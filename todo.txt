@@ -1,0 +1,28 @@
+# Problem 1
++ Fill in the skeleton of index.html so that it displays a 400x400-pixel checkerboard
++ The upper left square should be white. The number of squares across the board should be dynamically determined by the BOARD_SIZE variable in the code
++ This size defaults to 8x8, but you can change it to any value n by adding ?size=n to the end of the URL, e.g. index.html?size=16
++ No matter how many squares are in the checkerboard, it should always be 400x400 pixels
+
+# Problem 2
++ Display all the checkers on the board using HTML elements (the object approach)
++ Be sure that as the board scales to different sizes, so do the checkers
++ Checkers should also be centered on their respective squares regardless of board size
++ View must update when the board changes so that it displays the current state of the board at all times. You can test this by clicking on Auto Move, which produces legal board moves in the model, and New Game.
++ Black and red should take turns to make a move [BLACK MOVES FIRST]
++ You will need to update and keep track of whose turn it is to move
++ Add a visual cue regarding the respective turns to move above the buttons
+
+# Problem 3
+- When a checker moves from one place to another, draw a yellow arrow from the center of its old square to the center of its new square, appearing above all checkers
+- In the case of a double jump, you only need to draw one arrow from the starting square to the ending square
+- This arrow should persist until the next change to the board
+- If you are having problems thinking about how to draw an arrow, take a look at Exercise 4 of the Javascript/jQuery tutorial
+
+# Turning PS2 In
+- Package your completed assignment as a zip file that contains all of your files (including all necessary external libraries)
+- Test Zip file with Emily [Make sure that the page renders correctly on Chrome (which we'll be using for evaluating your projects) and in either Firefox or Safari]
+- List your collaborators in the comment at the top of index.html, or explicitly say that you discussed the assignment with nobody
+- Submit your zip file on Stellar
+- Self-Assesment Form
+
