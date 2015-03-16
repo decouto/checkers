@@ -74,7 +74,7 @@
     //Code is used to dynamically create a table by disclosing the size of each cell and the number of rows and columns desired
     var generate_table = function(numRows,numCols,cellPixelWidth) {
         //get the reference for the body
-        var overlay = document.getElementById("checker_overlay");
+        var body = document.getElementById("checker_overlay");
 
         // creates a <table> element and a <tbody> element
         // table has name "checker_table"
@@ -105,7 +105,7 @@
         // put the <tbody> in the <table>
         tbl.appendChild(tblBody);
         // appends <table> into <body>
-        overlay.appendChild(tbl);
+        body.appendChild(tbl);
         tbl.setAttribute("cellpadding", "0");
         tbl.setAttribute("cellspacing","0");
 
@@ -339,8 +339,7 @@
             </div>
         </td>
     </tr>
-
-   </table>
+</table>
 
 
 </body>
